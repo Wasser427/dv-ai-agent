@@ -12,25 +12,33 @@
     "pkg:linux": "pkg . --targets node16-linuxstatic-x64 --output dist/dv-ai-agent",
     "pkg:all": "pkg . --targets node16-win-x64,node16-linuxstatic-x64 --output dist/dv-ai-agent"
   },
-  "keywords": ["ai", "agent", "ic-verification"],
+  "keywords": [
+    "ai",
+    "agent",
+    "ic-verification"
+  ],
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "xlsx": "^0.18.5",
-    "mammoth": "^1.7.2",
     "axios": "^1.7.2",
-    "chalk": "^4.1.2"
+    "chalk": "^4.1.2",
+    "dotenv": "^16.4.5",
+    "mammoth": "^1.7.2",
+    "marked": "^3.0.8",
+    "marked-terminal": "^5.1.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^16.18.0",
-    "typescript": "^5.4.5",
+    "pkg": "^5.8.1",
     "ts-node": "^10.9.2",
-    "pkg": "^5.8.1"
+    "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=16.0.0"
   },
   "pkg": {
-    "scripts": ["dist/**/*.js"],
+    "scripts": [
+      "dist/**/*.js"
+    ],
     "assets": [],
     "targets": [
       "node16-win-x64",

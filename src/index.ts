@@ -17,6 +17,7 @@ import { HelpManager } from './utils/help';
 import { Memory } from './core/memory';
 import { ConfigManager } from './config';
 import { LLMClient } from './core/llm';
+import { renderMarkdown, isMarkdown } from './utils/markdown';
 import readline from 'readline';
 
 const i18n = I18n.getInstance();
@@ -93,7 +94,12 @@ function printResultSummary(results: any[]): void {
 
   for (const r of results) {
     if (r.result && r.result.type === 'direct_answer') {
-      console.log('\x1b[36m' + r.result.content + '\x1b[0m');
+      const content = r.result.content || '';
+      if (isMarkdown(content)) {
+        console.log(renderMarkdown(content));
+      } else {
+        console.log('\x1b[36m' + content + '\x1b[0m');
+      }
       console.log();
       continue;
     }
@@ -111,7 +117,12 @@ function printResultSummary(results: any[]): void {
         if (r.result.filePath) console.log(`   ${i18n.t('fileLabel')}: ${r.result.filePath}`);
         if (r.result.rowCount) console.log(`   ${i18n.t('rowsLabel')}: ${r.result.rowCount}`);
       } else if (r.result && r.result.message) {
-        console.log(`   ${r.result.message}`);
+        const msg = r.result.message;
+        if (typeof msg === 'string' && isMarkdown(msg)) {
+          console.log(renderMarkdown(msg));
+        } else {
+          console.log(`   ${msg}`);
+        }
       }
     } else {
       console.log(`   ${i18n.t('errorLabel')}: ${r.result}`);
