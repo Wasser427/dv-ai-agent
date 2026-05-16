@@ -24,6 +24,12 @@ export class LLMClient {
     return LLMClient.instance;
   }
 
+  reloadConfig(): void {
+    const configManager = ConfigManager.getInstance();
+    this.config = configManager.getConfig();
+    this.baseURL = this.config.baseURL;
+  }
+
   async chat(messages: Message[]): Promise<string> {
     try {
       const url = `${this.baseURL}/chat/completions`;

@@ -1,11 +1,14 @@
 import { ToolManager } from '../tools/manager';
+import { I18n } from '../i18n';
 
 export class HelpManager {
   private static instance: HelpManager;
   private toolManager: ToolManager;
+  private i18n: I18n;
 
   private constructor() {
     this.toolManager = ToolManager.getInstance();
+    this.i18n = I18n.getInstance();
   }
 
   static getInstance(): HelpManager {
@@ -16,59 +19,88 @@ export class HelpManager {
   }
 
   getHelp(): string {
-    const commands = this.getCommandsHelp();
-    const tools = this.getToolsHelp();
-    const usage = this.getUsageHelp();
+    const i18n = this.i18n;
+    const sep = i18n.t('separator');
 
     return `
-=========================================
-           DV AI Agent 帮助信息          
-=========================================
+${'='.repeat(41)}
+           ${i18n.t('helpTitle')}          
+${'='.repeat(41)}
 
-【命令】
-${commands}
+【${i18n.t('helpCommands')}】
+  !help    - ${i18n.t('helpCmdHelp')}
+  !exit    - ${i18n.t('helpCmdExit')}
+  !mode    - ${i18n.t('helpCmdMode')}
+  !qa      - ${i18n.t('helpCmdQA')}
+  !plan    - ${i18n.t('helpCmdPlan')}
+  !clear   - ${i18n.t('helpCmdClear')}
+  !reset   - ${i18n.t('helpCmdReset')}
+  !history - ${i18n.t('helpCmdHistory')}
+  !mem     - ${i18n.t('helpCmdMem')}
+  !zh      - ${i18n.t('helpLangChinese')}
+  !eng     - ${i18n.t('helpLangEnglish')}
+  !v       - ${i18n.t('helpCmdVersion')}
+  !reload  - ${i18n.t('helpCmdReload')}
+  !tools   - ${i18n.t('helpCmdTools')}
+  !help <${i18n.t('toolName')}> - ${i18n.t('helpCmdToolDetail')}
 
-【内置工具】
-${tools}
+【${i18n.t('helpTools')}】
+${this.getToolsHelpInternal()}
 
-【使用示例】
-${usage}
+【${i18n.t('helpExamples')}】
+  ${i18n.t('helpUsage1')}
+     > ${i18n.t('helpUsage1a')}
+     > ${i18n.t('helpUsage1b')}
+     > ${i18n.t('helpUsage1c')}
 
-【提示】
-- Agent 会根据您的任务描述自动规划执行步骤
-- 任务会按计划顺序执行
-- 执行结果会在完成后显示
+  ${i18n.t('helpUsage2')}
+     > ${i18n.t('helpUsage2a')}
+     > ${i18n.t('helpUsage2b')}
+
+  ${i18n.t('helpUsage3')}
+     > ${i18n.t('helpUsage3a')}
+
+【${i18n.t('helpTips')}】
+  - ${i18n.t('helpTip1')}
+  - ${i18n.t('helpTip2')}
+  - ${i18n.t('helpTip3')}
 `;
   }
 
   private getCommandsHelp(): string {
-    return `  !help    - 显示帮助信息（当前命令）
-  !exit    - 退出程序
-  !mode    - 切换问答/Plan模式
-  !qa      - 切换到问答模式
-  !plan    - 切换到Plan-and-Execute模式
-  !clear   - 清空对话记忆
-  !reset   - 清空对话记忆（同!clear）
-  !history - 查看对话记忆记录
-  !mem     - 查看对话记忆记录（同!history）
-  !tools   - 列出所有可用工具
-  !help <工具名> - 查看工具详情`;
+    const i18n = this.i18n;
+    return `  !help    - ${i18n.t('helpCmdHelp')}
+  !exit    - ${i18n.t('helpCmdExit')}
+  !mode    - ${i18n.t('helpCmdMode')}
+  !qa      - ${i18n.t('helpCmdQA')}
+  !plan    - ${i18n.t('helpCmdPlan')}
+  !clear   - ${i18n.t('helpCmdClear')}
+  !reset   - ${i18n.t('helpCmdReset')}
+  !history - ${i18n.t('helpCmdHistory')}
+  !mem     - ${i18n.t('helpCmdMem')}
+  !zh      - ${i18n.t('helpLangChinese')}
+  !eng     - ${i18n.t('helpLangEnglish')}
+  !v       - ${i18n.t('helpCmdVersion')}
+  !reload  - ${i18n.t('helpCmdReload')}
+  !tools   - ${i18n.t('helpCmdTools')}
+  !help <${i18n.t('toolName')}> - ${i18n.t('helpCmdToolDetail')}`;
   }
 
-  private getToolsHelp(): string {
+  private getToolsHelpInternal(): string {
     const tools = this.toolManager.getAllTools();
+    const i18n = this.i18n;
     let help = '';
-    
+
     for (const tool of tools) {
       const params = this.formatParameters(tool.parameters);
       help += `\n  ${tool.name}`;
-      help += `\n    描述: ${tool.description}`;
+      help += `\n    ${i18n.t('helpDesc')}: ${tool.description}`;
       if (params) {
-        help += `\n    参数: ${params}`;
+        help += `\n    ${i18n.t('helpParams')}: ${params}`;
       }
       help += '\n';
     }
-    
+
     return help;
   }
 
@@ -76,10 +108,11 @@ ${usage}
     if (!params || Object.keys(params).length === 0) {
       return '';
     }
-    
+
+    const i18n = this.i18n;
     return Object.entries(params)
       .map(([key, value]: [string, any]) => {
-        const required = value.required ? '(必需)' : '(可选)';
+        const required = value.required ? `(${i18n.t('helpRequired')})` : `(${i18n.t('helpOptional')})`;
         const type = value.type || 'any';
         const desc = value.description || '';
         return `${key}: ${type} ${required} ${desc}`;
@@ -87,54 +120,41 @@ ${usage}
       .join(', ');
   }
 
-  private getUsageHelp(): string {
-    return `  1. 简单任务:
-     > 读取 test.txt 文件内容
-     > 分析 data.csv 中的数据
-     > 调用 API 获取天气信息
-
-  2. 复杂任务:
-     > 读取 test.txt，然后总结内容
-     > 下载 Excel 文件并分析前10行数据
-
-  3. 自定义任务:
-     > 帮我完成 IC 验证相关的数据分析`;
-  }
-
   getToolsList(): string {
     const tools = this.toolManager.getAllTools();
-    let help = '\n【可用工具列表】\n\n';
-    
-    help += '  序号    工具名称              描述\n';
+    const i18n = this.i18n;
+    let help = `\n【${i18n.t('helpToolListTitle')}】\n\n`;
+
+    help += `${i18n.t('helpToolListHeader')}\n`;
     help += '  ' + '-'.repeat(60) + '\n';
-    
+
     tools.forEach((tool, index) => {
       const num = (index + 1).toString().padStart(3);
       const name = tool.name.padEnd(20);
       const desc = tool.description.substring(0, 30);
       help += `  ${num}    ${name}  ${desc}\n`;
     });
-    
-    help += '\n  输入 !help <工具名> 查看工具详情\n';
-    
+
+    help += `\n  ${i18n.t('helpToolListFooter')}\n`;
+
     return help;
   }
 
   getToolDetail(toolName: string): string {
     const tool = this.toolManager.getTool(toolName);
-    
+    const i18n = this.i18n;
+
     if (!tool) {
-      return `未找到工具: ${toolName}\n请使用 !tools 查看所有可用工具`;
+      return `${i18n.format('helpToolNotFound', toolName)}\n${i18n.t('helpToolListFooter')}`;
     }
-    
+
     const params = this.formatParameters(tool.parameters);
-    
+
     return `
-【工具详情】
-  名称: ${tool.name}
-  描述: ${tool.description}
-  参数:
-${params ? '    ' + params : '    无参数'}
+【${i18n.t('helpToolDetailTitle')}】
+  ${i18n.t('helpDesc')}: ${tool.description}
+  ${i18n.t('helpParams')}:
+${params ? '    ' + params : `    ${i18n.t('helpNone')}`}
 `;
   }
 }

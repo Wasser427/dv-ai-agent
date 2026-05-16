@@ -2,6 +2,7 @@ import { LLMClient, Message } from './llm';
 import { ToolManager } from '../tools/manager';
 import { I18n } from '../i18n';
 import { Memory } from './memory';
+import { ConfigManager } from '../config';
 
 export interface TaskStep {
   id: number;
@@ -23,6 +24,7 @@ export class DVAgent {
   private toolManager: ToolManager;
   private i18n: I18n;
   private memory: Memory;
+  private debug: boolean;
   private mode: AgentMode = 'plan';
 
   constructor() {
@@ -30,6 +32,7 @@ export class DVAgent {
     this.toolManager = ToolManager.getInstance();
     this.i18n = I18n.getInstance();
     this.memory = Memory.getInstance();
+    this.debug = ConfigManager.getInstance().isDebug;
   }
 
   getMode(): AgentMode {
@@ -38,7 +41,10 @@ export class DVAgent {
 
   setMode(mode: AgentMode): void {
     this.mode = mode;
-    console.log(`\n[模式切换] 当前模式: ${mode === 'plan' ? 'Plan-and-Execute' : '问答模式'}\n`);
+    const modeName = mode === 'plan'
+      ? this.i18n.t('modePlan')
+      : this.i18n.t('modeQA');
+    console.log(`\n${this.i18n.format('modeSwitch', modeName)}\n`);
   }
 
   toggleMode(): void {
@@ -47,6 +53,10 @@ export class DVAgent {
     } else {
       this.setMode('plan');
     }
+  }
+
+  reloadDebug(): void {
+    this.debug = ConfigManager.getInstance().isDebug;
   }
 
   private cleanJSONResponse(response: string): string {
@@ -87,7 +97,7 @@ export class DVAgent {
     const jsonStr = this.extractJSON(cleaned);
 
     if (!jsonStr) {
-      throw new Error('无法从响应中提取 JSON');
+      throw new Error(this.i18n.t('parseErrorNoJSON'));
     }
 
     try {
@@ -102,7 +112,7 @@ export class DVAgent {
       try {
         return JSON.parse(tryCleaned);
       } catch (e) {
-        throw new Error('JSON 解析失败: ' + (error as Error).message);
+        throw new Error(this.i18n.t('parseErrorJSON') + ' ' + (error as Error).message);
       }
     }
   }
@@ -156,7 +166,7 @@ export class DVAgent {
   }
 
   async ask(query: string): Promise<any> {
-    console.log('[问答模式] 正在获取回答...\n');
+    console.log(this.i18n.t('qaGettingAnswer') + '\n');
 
     const historyMessages = this.memory.getMessages();
 
@@ -170,9 +180,11 @@ export class DVAgent {
 
     const response = await this.llm.chat(messages);
 
-    console.log('\n========== [LLM 回答] ==========\n');
-    console.log(response);
-    console.log('\n================================\n');
+    if (this.debug) {
+      console.log(`\n========== [${this.i18n.t('llmAnswer')}] ==========\n`);
+      console.log(response);
+      console.log(`\n${'='.repeat(41)}\n`);
+    }
 
     return [{
       step: 1,
@@ -202,6 +214,11 @@ export class DVAgent {
       toolsDesc += `${tool.name}\n${tool.description}\n参数:\n${params}\n\n`;
     }
 
+    const lang = this.i18n.getCurrentLang();
+    const fileAnalysisHint = lang === 'zh'
+      ? '对于Excel或CSV文件分析任务，应使用 excel_to_md 或 csv_to_md 工具先转换为Markdown格式，再用 analyze 工具分析。'
+      : 'For Excel or CSV file analysis tasks, use excel_to_md or csv_to_md tools to convert to Markdown format first, then use the analyze tool.';
+
     const systemPrompt = `你是一个专业的 AI 助手，专门帮助用户完成 IC 验证相关的任务。请根据用户的查询，规划执行步骤。
 
 ${toolsDesc}
@@ -229,8 +246,7 @@ ${toolsDesc}
 - 步骤2需要读取步骤1的文件内容: "filePath": "{step.1.result.filePath}"
 - 步骤4需要使用步骤3生成的内容: "content": "{step.3.result.content}"
 
-【Excel/CSV文件分析】
-对于Excel或CSV文件分析任务，应使用 excel_to_md 或 csv_to_md 工具先转换为Markdown格式，再用 analyze 工具分析。
+【${fileAnalysisHint}】
 
 【重要规则】
 1. 如果步骤需要使用工具，args 字段必须包含该工具的所有必需参数
@@ -250,15 +266,17 @@ ${toolsDesc}
 
     const response = await this.llm.chat(messages);
 
-    console.log('\n========== [调试] LLM 响应 ==========');
-    console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
-    console.log('====================================\n');
+    if (this.debug) {
+      console.log(`\n========== [${this.i18n.t('debugLLMResponse')}] ==========`);
+      console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
+      console.log('====================================\n');
+    }
 
     try {
       const plan = this.parseJSON(response) as TaskPlan;
 
       if (!plan.steps || !Array.isArray(plan.steps)) {
-        throw new Error('计划格式不正确：缺少 steps 数组');
+        throw new Error(this.i18n.t('formatError'));
       }
 
       let validSteps: TaskStep[] = [];
@@ -282,8 +300,8 @@ ${toolsDesc}
       plan.steps = validSteps;
       return plan;
     } catch (error) {
-      console.error('[调试] JSON 解析详细错误:', error);
-      throw new Error('计划生成失败: ' + (error as Error).message);
+      if (this.debug) console.error(this.i18n.t('debugJSONError'), error);
+      throw new Error(this.i18n.t('planGenerationFailed') + ' ' + (error as Error).message);
     }
   }
 
@@ -297,24 +315,28 @@ ${toolsDesc}
 
       try {
         if (step.tool) {
-          console.log(`\n[步骤 ${step.id}] 使用工具: ${step.tool}`);
+          console.log(`\n${this.i18n.format('stepUsingTool', step.id, step.tool)}`);
 
           const resolvedArgs = this.resolveStepReferences(step.args || {}, previousResults);
-          console.log(`[参数] ${JSON.stringify(resolvedArgs)}`);
+          if (this.debug) {
+            console.log(`${this.i18n.t('stepParams')} ${JSON.stringify(resolvedArgs)}`);
+          }
 
           const result = await this.toolManager.executeTool(step.tool, resolvedArgs);
           step.result = result;
           previousResults.set(step.id, result);
         } else {
-          console.log(`\n[步骤 ${step.id}] ${step.description}`);
-          step.result = { message: '步骤完成' };
+          if (this.debug) {
+            console.log(`\n[${this.i18n.t('stepLabel')} ${step.id}] ${step.description}`);
+          }
+          step.result = { message: this.i18n.t('stepDone') };
           previousResults.set(step.id, step.result);
         }
         step.status = 'completed';
       } catch (error) {
         step.status = 'failed';
         step.result = (error as Error).message;
-        console.error(`[错误] 步骤 ${step.id} 失败:`, error);
+        console.error(`${this.i18n.format('stepError', step.id)}`, error);
       }
     }
 
@@ -327,11 +349,11 @@ ${toolsDesc}
     }
 
     const plan = await this.plan(userQuery);
-    console.log('\n========== [计划] ==========');
+    console.log(`\n========== [${this.i18n.t('planBox')}] ==========`);
     plan.steps.forEach(s => {
       console.log(`  ${s.id}. ${s.description}`);
       if (s.tool) {
-        console.log(`     工具: ${s.tool}`);
+        console.log(`     ${this.i18n.t('toolLabel')} ${s.tool}`);
       }
     });
     console.log('============================\n');

@@ -15,13 +15,16 @@ import {
 import { I18n } from './i18n';
 import { HelpManager } from './utils/help';
 import { Memory } from './core/memory';
+import { ConfigManager } from './config';
+import { LLMClient } from './core/llm';
 import readline from 'readline';
 
-console.log('=========================================');
-console.log('        DV AI Agent - IC 验证助手        ');
-console.log('=========================================\n');
-
 const i18n = I18n.getInstance();
+
+const SEP = '=================================================';
+
+printStartupBanner();
+
 const helpManager = HelpManager.getInstance();
 const memory = Memory.getInstance();
 
@@ -47,8 +50,46 @@ const rl = readline.createInterface({
   prompt: '> '
 });
 
+function printStartupBanner(): void {
+  console.log('\n' + SEP);
+  const title = i18n.t('bannerTitle');
+  const pad = Math.floor((SEP.length - title.length) / 2);
+  console.log(' '.repeat(Math.max(0, pad)) + title);
+  console.log('     https://github.com/Wasser427/dv-ai-agent    ');
+  console.log(SEP);
+}
+
+function printStartupInfo(): void {
+  const isDebug = ConfigManager.getInstance().isDebug;
+  const mode = agent.getMode();
+  const modeBanner = mode === 'plan' ? i18n.t('modeBannerPlan') : i18n.t('modeBannerQA');
+  const modeSwitchHint = mode === 'plan' ? i18n.t('modeSwitchQA') : i18n.t('modeSwitchPlan');
+  const debugLabel = isDebug ? i18n.t('debugModeOn') : i18n.t('debugModeOff');
+
+  console.log('');
+  console.log('*'.repeat(55));
+  console.log(`  ${debugLabel}`);
+  console.log(`  ${modeBanner}`);
+  console.log(`  ${modeSwitchHint}`);
+  console.log(`  ${i18n.t('langSwitchHint')}`);
+  console.log('*'.repeat(55));
+  console.log('');
+  console.log(i18n.t('commandsSection'));
+  console.log('  !exit    ' + i18n.t('helpCmdExit'));
+  console.log('  !mode    ' + i18n.t('helpCmdMode'));
+  console.log('  !qa      ' + i18n.t('helpCmdQA'));
+  console.log('  !plan    ' + i18n.t('helpCmdPlan'));
+  console.log('  !clear   ' + i18n.t('helpCmdClear'));
+  console.log('  !help    ' + i18n.t('helpCmdHelp'));
+  console.log('  !tools   ' + i18n.t('helpCmdTools'));
+  console.log('  !v       ' + i18n.t('helpCmdVersion'));
+  console.log('  !reload  ' + i18n.t('helpCmdReload'));
+  console.log('  !eng / !zh\n');
+  console.log(i18n.t('enterTask') + '\n');
+}
+
 function printResultSummary(results: any[]): void {
-  console.log('\n========== [执行结果摘要] ==========\n');
+  console.log(`\n========== [${i18n.t('resultSummary')}] ==========\n`);
 
   for (const r of results) {
     if (r.result && r.result.type === 'direct_answer') {
@@ -61,25 +102,25 @@ function printResultSummary(results: any[]): void {
     const statusColor = r.status === 'completed' ? '\x1b[32m' : '\x1b[31m';
     const reset = '\x1b[0m';
 
-    console.log(`${statusColor}${statusIcon} 步骤 ${r.step}: ${r.description}${reset}`);
+    console.log(`${statusColor}${statusIcon} ${i18n.t('stepLabel')} ${r.step}: ${r.description}${reset}`);
 
     if (r.status === 'completed') {
       if (r.result && r.result.success !== undefined) {
-        console.log(`   结果: ${r.result.success ? '成功' : '失败'}`);
-        if (r.result.message) console.log(`   消息: ${r.result.message}`);
-        if (r.result.filePath) console.log(`   文件: ${r.result.filePath}`);
-        if (r.result.rowCount) console.log(`   行数: ${r.result.rowCount}`);
+        console.log(`   ${i18n.t('resultLabel')}: ${r.result.success ? i18n.t('successLabel') : i18n.t('failLabel')}`);
+        if (r.result.message) console.log(`   ${i18n.t('messageLabel')}: ${r.result.message}`);
+        if (r.result.filePath) console.log(`   ${i18n.t('fileLabel')}: ${r.result.filePath}`);
+        if (r.result.rowCount) console.log(`   ${i18n.t('rowsLabel')}: ${r.result.rowCount}`);
       } else if (r.result && r.result.message) {
         console.log(`   ${r.result.message}`);
       }
     } else {
-      console.log(`   错误: ${r.result}`);
+      console.log(`   ${i18n.t('errorLabel')}: ${r.result}`);
     }
     console.log();
   }
 
   const completedCount = results.filter(r => r.status === 'completed').length;
-  console.log(`已完成: ${completedCount}/${results.length} 个步骤`);
+  console.log(i18n.format('completedCount', completedCount, results.length));
   console.log('\n==========================================\n');
 }
 
@@ -87,23 +128,48 @@ async function handleCommand(input: string): Promise<boolean> {
   const trimmed = input.trim().toLowerCase();
 
   if (trimmed === '!exit') {
-    console.log('\n感谢使用 DV AI Agent，再见！\n');
+    console.log('\n' + i18n.t('goodbye') + '\n');
     rl.close();
     process.exit(0);
   }
 
+  if (trimmed === '!v') {
+    const pkg = require('../package.json');
+    console.log(`\nVersion ${pkg.version}\n`);
+    return true;
+  }
+
+  if (trimmed === '!eng') {
+    i18n.setLanguage('en');
+    printStartupBanner();
+    console.log(`\n${i18n.t('languageSwitched')} ${i18n.t('langName')}\n`);
+    printStartupInfo();
+    return true;
+  }
+
+  if (trimmed === '!zh') {
+    i18n.setLanguage('zh');
+    printStartupBanner();
+    console.log(`\n${i18n.t('languageSwitched')} ${i18n.t('langName')}\n`);
+    printStartupInfo();
+    return true;
+  }
+
   if (trimmed === '!mode') {
     agent.toggleMode();
+    printStartupInfo();
     return true;
   }
 
   if (trimmed === '!plan') {
     agent.setMode('plan');
+    printStartupInfo();
     return true;
   }
 
   if (trimmed === '!qa') {
     agent.setMode('qa');
+    printStartupInfo();
     return true;
   }
 
@@ -112,14 +178,27 @@ async function handleCommand(input: string): Promise<boolean> {
     return true;
   }
 
+  if (trimmed === '!reload') {
+    const cfg = ConfigManager.getInstance();
+    cfg.reload();
+    agent.reloadDebug();
+    LLMClient.getInstance().reloadConfig();
+    i18n.reload();
+    printStartupBanner();
+    console.log(i18n.t('welcome') + '\n');
+    console.log(`\n${i18n.t('reloadEnvOk')}\n`);
+    printStartupInfo();
+    return true;
+  }
+
   if (trimmed === '!history' || trimmed === '!mem') {
     const history = memory.getHistory();
     if (history.length === 0) {
-      console.log('\n当前没有记忆记录\n');
+      console.log('\n' + i18n.t('noMemory') + '\n');
     } else {
-      console.log(`\n========== [记忆记录] (${history.length} 条) ==========\n`);
+      console.log(`\n========== [${i18n.t('memoryTitle')}] (${i18n.format('memoryCount', history.length)}) ==========\n`);
       history.forEach((entry, i) => {
-        const role = entry.role === 'user' ? '用户' : '助手';
+        const role = entry.role === 'user' ? i18n.t('roleUser') : i18n.t('roleAssistant');
         const time = new Date(entry.timestamp).toLocaleTimeString();
         console.log(`[${time}] ${role}: ${entry.content.substring(0, 100)}${entry.content.length > 100 ? '...' : ''}`);
       });
@@ -153,7 +232,7 @@ async function handleInput(query: string) {
     return;
   }
 
-  console.log('\n用户查询: ' + query + '\n');
+  console.log('\n' + i18n.t('userQueryLabel') + ' ' + query + '\n');
 
   try {
     memory.addUserMessage(query);
@@ -186,19 +265,5 @@ rl.on('close', () => {
   process.exit(0);
 });
 
-console.log('╔════════════════════════════════════════════════════════════╗');
-console.log('║  当前模式: Plan-and-Execute  (复杂任务: 读取文件/分析等)    ║');
-console.log('║  输入 !qa 切换到问答模式 (简单问答)                         ║');
-console.log('╚════════════════════════════════════════════════════════════╝');
-console.log('');
-console.log('命令说明:');
-console.log('  !exit  退出程序');
-console.log('  !mode  切换问答/Plan模式');
-console.log('  !qa    切换到问答模式');
-console.log('  !plan  切换到Plan-and-Execute模式');
-console.log('  !clear 清空记忆');
-console.log('  !help  查看帮助信息');
-console.log('  !tools 查看所有工具\n');
-console.log('请输入您的任务描述:\n');
-
+printStartupInfo();
 rl.prompt();
