@@ -1,0 +1,10 @@
+node_modules
+dist
+no_upload
+.env
+*.log
+.DS_Store
+*.heapsnapshot
+*.network-request
+*.network-response
+
