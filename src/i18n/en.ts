@@ -106,5 +106,7 @@ export default {
   helpNone: 'None',
   separator: '========================================',
 
+  undefinedCommand: 'Undefined command: {0}',
+
   systemPromptFileAnalysis: 'For Excel or CSV file analysis tasks, use excel_to_md or csv_to_md tools to convert to Markdown format first, then use the analyze tool.',
 };

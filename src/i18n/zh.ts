@@ -106,5 +106,7 @@ export default {
   helpNone: '无',
   separator: '========================================',
 
+  undefinedCommand: '命令未定义: {0}',
+
   systemPromptFileAnalysis: '对于Excel或CSV文件分析任务，应使用 excel_to_md 或 csv_to_md 工具先转换为Markdown格式，再用 analyze 工具分析。',
 };

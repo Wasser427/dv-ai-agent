@@ -234,6 +234,11 @@ async function handleCommand(input: string): Promise<boolean> {
     return true;
   }
 
+  if (trimmed.startsWith('!') && trimmed.length > 1) {
+    console.log(`\n${i18n.format('undefinedCommand', trimmed)}\n`);
+    return true;
+  }
+
   return false;
 }
 
