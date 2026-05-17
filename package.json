@@ -5,7 +5,7 @@
   "bin": "dist/index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "tsc && node dist/index.js",
     "build": "tsc",
     "start": "node dist/index.js",
     "pkg:win": "pkg . --targets node16-win-x64 --output dist/dv-ai-agent.exe",
@@ -29,8 +29,7 @@
   "devDependencies": {
     "@types/node": "^16.18.0",
     "pkg": "^5.8.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=16.0.0"
