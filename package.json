@@ -27,9 +27,9 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/node": "^16.18.0",
-    "pkg": "^5.8.1",
-    "typescript": "^5.3.3"
+    "@types/node": "16.18.0",
+    "pkg": "5.8.1",
+    "typescript": "5.3.3"
   },
   "engines": {
     "node": ">=16.0.0"

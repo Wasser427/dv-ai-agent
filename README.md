@@ -17,7 +17,7 @@ A cross-platform AI Agent specialized for the IC verification industry, integrat
 - **Conversation Memory**: Supports multi-turn dialogue context with view/clear commands
 - **Step Data Passing**: Supports `{step.N.field}` syntax for referencing previous step results
 - **Rich Built-in Tools**:
-  - File operations (TXT, LOG, MD, JSON, CSV, XML, HTML)
+  - File operations (all text files including code files: JS/TS, Python, Java, C/C++, Go, Rust, Verilog/SystemVerilog, etc., and config files: JSON, YAML, TOML, XML, etc.)
   - Excel reading and Markdown conversion
   - Word (DOCX) reading
   - CSV reading and Markdown conversion

@@ -6,7 +6,7 @@ import mammoth from 'mammoth';
 
 export class FileReadTool extends BaseTool {
   name = 'file_read';
-  description = '读取文本文件（txt, log, md, json, csv等）的内容';
+  description = '读取文本文件（代码文件、配置文档、芯片设计文件等）的内容，支持多种文本格式';
   parameters = {
     filePath: { type: 'string', description: '文件路径', required: true }
   };
@@ -20,7 +20,67 @@ export class FileReadTool extends BaseTool {
       }
 
       const ext = path.extname(filePath).toLowerCase();
-      const supportedExts = ['.txt', '.log', '.md', '.json', '.csv', '.xml', '.html', '.htm'];
+      const supportedExts = [
+        '.txt', '.log', '.md', '.json', '.csv', '.xml', '.html', '.htm',
+        '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.cts', '.mts',
+        '.py', '.pyw', '.pyi',
+        '.java', '.class', '.jar',
+        '.c', '.h', '.cpp', '.hpp', '.cc', '.cxx', '.hh', '.hxx',
+        '.go', '.rs', '.rb', '.erb', '.gemfile',
+        '.php', '.phtml', '.php3', '.php4', '.php5',
+        '.cs', '.fs', '.fsx', '.sln',
+        '.swift', '.m', '.mm',
+        '.kt', '.kts', '.scala', '.sc',
+        '.r', '.R', '.rmd',
+        '.lua', '.lua5',
+        '.pl', '.pm', '.t',
+        '.sh', '.bash', '.zsh', '.fish', '.ash', '.csh', '.tcsh',
+        '.ps1', '.psm1', '.psd1',
+        '.bat', '.cmd', '.btm',
+        '.sql', '.ddl', '.dml',
+        '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.config',
+        '.properties', '.env', '.gitignore', '.dockerignore',
+        '.vue', '.svelte',
+        '.css', '.scss', '.sass', '.less', '.styl',
+        '.graphql', '.gql', '.schema',
+        '.proto', '.buf',
+        '.makefile', '.mk', '.cmake', '.gradle',
+        '.dockerfile', '.dockerignore',
+        '.gitignore', '.gitattributes', '.gitconfig',
+        '.editorconfig', '.eslintrc', '.prettierrc', '.babelrc',
+        '.webpack', '.rollup', '.vite', '.esbuild',
+        '.gradle', '.properties',
+        '.rdf', '.ttl', '.nt',
+        '.jwt', '.p12', '.pem', '.cer', '.crt', '.key',
+        '.diff', '.patch',
+        '.ex', '.exs', '.eex', '.leex',
+        '.fs', '.fsx', '.fsscript',
+        '.nim', '.nimble',
+        '.zig', '.zap',
+        '.v', '.vh', '.sv', '.svh',
+        '.glsl', '.vert', '.frag', '.comp',
+        '.ipynb',
+        '.env', '.env.local', '.env.development', '.env.production',
+        '.editorconfig', '.prettierrc', '.prettierrc.json', '.prettierrc.yaml',
+        '.eslintrc', '.eslintrc.js', '.eslintrc.json', '.eslintrc.yaml',
+        '.babelrc', '.babelrc.json', '.babelrc.js',
+        '.pylintrc', '.flake8', '.mypyrc', '.coverage',
+        '.clang-format', '.clang-tidy',
+        '.xlf', '.xliff',
+        '.d.ts', '.d.tsx',
+        '.v', '.sv', '.svh', '.vh', '.vlog', '.vams',
+        '.sdc', '.xdc', '.ucf',
+        '.lib', '.cel', '.mil', '.gds', '.oa',
+        '.lef', '.def', '.sdf', '.cdl',
+        '.vcd', '.fsdb', '.evcd', '.shm', '.raw',
+        '.f', '.filelist', '.lst',
+        '.tcl', '.do', '.scr',
+        '.sp', '.cir', '.net', '.ckt',
+        '.bin', '.hex', '.mif', '.rim',
+        '.prj', '.pro', '.qsf', '.srf',
+        '.dat', '.trn', '.rpt', '.out',
+        '.waive', '.waivers'
+      ];
 
       if (!supportedExts.includes(ext)) {
         throw new Error(`不支持的文件类型: ${ext}，支持的类型: ${supportedExts.join(', ')}`);
