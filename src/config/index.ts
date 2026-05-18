@@ -35,11 +35,6 @@ if (envPath) {
   loadEnvFile(envPath);
 }
 
-function buildDebugFlag(): boolean {
-  const debugEnv = (process.env.DEBUG || '').toLowerCase();
-  return debugEnv === 'true' || debugEnv === '1';
-}
-
 function buildConfig(): AgentConfig {
   return {
     apiKey: process.env.USER_API_KEY || '',
@@ -47,7 +42,6 @@ function buildConfig(): AgentConfig {
     model: process.env.USER_MODEL || 'gpt-3.5-turbo',
     temperature: parseFloat(process.env.USER_TEMPERATURE || '0.7'),
     maxTokens: parseInt(process.env.USER_MAX_TOKENS || '2048', 10),
-    language: process.env.AGENT_LANGUAGE || 'zh'
   };
 }
 
@@ -57,7 +51,7 @@ export class ConfigManager {
   public isDebug: boolean;
 
   private constructor() {
-    this.isDebug = buildDebugFlag();
+    this.isDebug = false;
     this.config = buildConfig();
   }
 
@@ -68,12 +62,20 @@ export class ConfigManager {
     return ConfigManager.instance;
   }
 
+  setDebug(debug: boolean): void {
+    this.isDebug = debug;
+  }
+
+  toggleDebug(): boolean {
+    this.isDebug = !this.isDebug;
+    return this.isDebug;
+  }
+
   reload(): void {
     const p = findEnvPath();
     if (p) {
       loadEnvFile(p);
     }
-    this.isDebug = buildDebugFlag();
     this.config = buildConfig();
   }
 

@@ -4,5 +4,4 @@ export interface AgentConfig {
   model: string;
   temperature: number;
   maxTokens: number;
-  language: string;
 }

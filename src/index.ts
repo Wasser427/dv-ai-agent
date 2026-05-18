@@ -63,8 +63,27 @@ function printStartupBanner(): void {
 function printStartupInfo(): void {
   const isDebug = ConfigManager.getInstance().isDebug;
   const mode = agent.getMode();
-  const modeBanner = mode === 'plan' ? i18n.t('modeBannerPlan') : i18n.t('modeBannerQA');
-  const modeSwitchHint = mode === 'plan' ? i18n.t('modeSwitchQA') : i18n.t('modeSwitchPlan');
+  let modeBanner: string;
+  let modeSwitchHint: string;
+
+  switch (mode) {
+    case 'plan':
+      modeBanner = i18n.t('modeBannerPlan');
+      modeSwitchHint = i18n.t('modeSwitchQA');
+      break;
+    case 'qa':
+      modeBanner = i18n.t('modeBannerQA');
+      modeSwitchHint = i18n.t('modeSwitchMulti') || 'Input !multi for Multi-Agent mode';
+      break;
+    case 'multi':
+      modeBanner = i18n.t('modeBannerMulti') || 'Current mode: Multi-Agent (parallel execution)';
+      modeSwitchHint = i18n.t('modeSwitchPlan') || 'Input !plan for Plan-and-Execute mode';
+      break;
+    default:
+      modeBanner = i18n.t('modeBannerPlan');
+      modeSwitchHint = i18n.t('modeSwitchQA');
+  }
+
   const debugLabel = isDebug ? i18n.t('debugModeOn') : i18n.t('debugModeOff');
 
   console.log('');
@@ -80,6 +99,9 @@ function printStartupInfo(): void {
   console.log('  !mode    ' + i18n.t('helpCmdMode'));
   console.log('  !qa      ' + i18n.t('helpCmdQA'));
   console.log('  !plan    ' + i18n.t('helpCmdPlan'));
+  console.log('  !multi   ' + i18n.t('helpCmdMulti') || 'Switch to Multi-Agent mode');
+  console.log('  !debug   ' + i18n.t('helpCmdDebug') || 'Toggle debug mode');
+  console.log('  !status  ' + i18n.t('helpCmdStatus') || 'Show current status');
   console.log('  !clear   ' + i18n.t('helpCmdClear'));
   console.log('  !help    ' + i18n.t('helpCmdHelp'));
   console.log('  !tools   ' + i18n.t('helpCmdTools'));
@@ -184,6 +206,35 @@ async function handleCommand(input: string): Promise<boolean> {
     return true;
   }
 
+  if (trimmed === '!multi') {
+    agent.setMode('multi');
+    printStartupInfo();
+    return true;
+  }
+
+  if (trimmed === '!debug') {
+    const cfg = ConfigManager.getInstance();
+    const isDebug = cfg.toggleDebug();
+    console.log(`\n[调试模式] ${isDebug ? '已启用' : '已禁用'}\n`);
+    printStartupInfo();
+    return true;
+  }
+
+  if (trimmed === '!status') {
+    const mode = agent.getMode();
+    const isDebug = ConfigManager.getInstance().isDebug;
+    const modeNames: Record<string, string> = {
+      'qa': i18n.t('modeQA') || '问答模式',
+      'plan': i18n.t('modePlan') || '计划执行模式',
+      'multi': i18n.t('modeMulti') || '多Agent协同模式'
+    };
+    console.log(`\n========== [${i18n.t('statusTitle') || '状态信息'}] ==========\n`);
+    console.log(`  ${i18n.t('currentMode') || 'Agent模式'}: ${modeNames[mode] || mode}`);
+    console.log(`  ${i18n.t('debugMode') || '运行模式'}: ${isDebug ? (i18n.t('developerMode') || '开发者模式') : (i18n.t('userMode') || '用户模式')}`);
+    console.log('\n============================================\n');
+    return true;
+  }
+
   if (trimmed === '!clear' || trimmed === '!reset') {
     memory.clear();
     return true;
@@ -255,7 +306,13 @@ async function handleInput(query: string) {
 
     const result = await agent.run(query);
 
-    memory.addAssistantMessage(JSON.stringify(result));
+    // 根据模式保存不同的记忆内容
+    let responseContent = JSON.stringify(result);
+    if (agent.getMode() === 'qa' && result.length > 0 && result[0].result?.content) {
+      // 问答模式保存实际回答内容
+      responseContent = result[0].result.content;
+    }
+    memory.addAssistantMessage(responseContent);
 
     printResultSummary(result);
 

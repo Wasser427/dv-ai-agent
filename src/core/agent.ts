@@ -3,6 +3,7 @@ import { ToolManager } from '../tools/manager';
 import { I18n } from '../i18n';
 import { Memory } from './memory';
 import { ConfigManager } from '../config';
+import { MasterAgent, TaskResult } from './multi-agent';
 
 export interface TaskStep {
   id: number;
@@ -17,7 +18,7 @@ export interface TaskPlan {
   steps: TaskStep[];
 }
 
-export type AgentMode = 'plan' | 'qa';
+export type AgentMode = 'plan' | 'qa' | 'multi';
 
 export class DVAgent {
   private llm: LLMClient;
@@ -25,7 +26,8 @@ export class DVAgent {
   private i18n: I18n;
   private memory: Memory;
   private debug: boolean;
-  private mode: AgentMode = 'plan';
+  private mode: AgentMode = 'multi';
+  private masterAgent: MasterAgent | null = null;
 
   constructor() {
     this.llm = LLMClient.getInstance();
@@ -41,15 +43,32 @@ export class DVAgent {
 
   setMode(mode: AgentMode): void {
     this.mode = mode;
-    const modeName = mode === 'plan'
-      ? this.i18n.t('modePlan')
-      : this.i18n.t('modeQA');
+    let modeName: string;
+    switch (mode) {
+      case 'plan':
+        modeName = this.i18n.t('modePlan');
+        this.masterAgent = null;
+        break;
+      case 'qa':
+        modeName = this.i18n.t('modeQA');
+        this.masterAgent = null;
+        break;
+      case 'multi':
+        modeName = this.i18n.t('modeMulti') || 'Multi-Agent';
+        this.masterAgent = new MasterAgent({ enableMultiAgent: true, maxParallelWorkers: 5 });
+        break;
+      default:
+        modeName = this.i18n.t('modePlan');
+        this.masterAgent = null;
+    }
     console.log(`\n${this.i18n.format('modeSwitch', modeName)}\n`);
   }
 
   toggleMode(): void {
     if (this.mode === 'plan') {
       this.setMode('qa');
+    } else if (this.mode === 'qa') {
+      this.setMode('multi');
     } else {
       this.setMode('plan');
     }
@@ -57,6 +76,35 @@ export class DVAgent {
 
   reloadDebug(): void {
     this.debug = ConfigManager.getInstance().isDebug;
+  }
+
+  private isMarkdownTool(toolName: string): boolean {
+    const mdTools = ['file_to_md', 'excel_to_md', 'csv_to_md', 'md_to_md', 'docx_to_md', 'pptx_to_md', 'pdf_to_md'];
+    return mdTools.includes(toolName);
+  }
+
+  private async analyzeMarkdownContent(content: string, task: string): Promise<string> {
+    const systemPrompt = `你是一个专业的文档分析助手，负责根据用户需求分析文档内容。
+
+【用户分析需求】
+${task}
+
+【文档内容】
+${content}
+
+请直接返回分析结果，不要包含任何解释或额外文字。如果文档内容与分析需求无关，请明确说明。`;
+
+    const messages: Message[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: '请按照用户需求分析上述文档内容。' }
+    ];
+
+    try {
+      const result = await this.llm.chat(messages);
+      return result;
+    } catch (error: any) {
+      throw new Error(`文档分析失败: ${error.message}`);
+    }
   }
 
   private cleanJSONResponse(response: string): string {
@@ -138,14 +186,14 @@ export class DVAgent {
             const prevResult = previousResults.get(stepId);
 
             if (prevResult) {
-              if (prop && prevResult[prop] !== undefined) {
-                resolvedValue = prevResult[prop];
-              } else if (typeof prevResult === 'string') {
+              if (typeof prevResult === 'string') {
                 resolvedValue = prevResult;
               } else if (prevResult.content !== undefined) {
                 resolvedValue = prevResult.content;
               } else if (prevResult.result && prevResult.result.content !== undefined) {
                 resolvedValue = prevResult.result.content;
+              } else if (prop && prevResult[prop] !== undefined) {
+                resolvedValue = prevResult[prop];
               } else {
                 resolvedValue = value;
               }
@@ -323,8 +371,79 @@ ${toolsDesc}
           }
 
           const result = await this.toolManager.executeTool(step.tool, resolvedArgs);
-          step.result = result;
-          previousResults.set(step.id, result);
+          
+          // 如果是 xxx_to_md 工具，自动分析 Markdown 内容
+          if (this.isMarkdownTool(step.tool)) {
+            // 检查是否有多个 sheet 需要分别分析
+            if (result.sheetResults && Array.isArray(result.sheetResults) && result.sheetResults.length > 0) {
+              if (this.debug) {
+                console.log(`[分析] 检测到多 Sheet Excel 文件，共 ${result.sheetResults.length} 个工作表`);
+              }
+              
+              const analysisResults: any[] = [];
+              
+              for (const sheet of result.sheetResults) {
+                if (sheet.content && typeof sheet.content === 'string' && sheet.content.trim()) {
+                  if (this.debug) {
+                    console.log(`[分析] 正在分析工作表: ${sheet.sheetName}...`);
+                  }
+                  
+                  const sheetAnalysis = await this.analyzeMarkdownContent(sheet.content, step.description);
+                  analysisResults.push({
+                    sheetName: sheet.sheetName,
+                    rowCount: sheet.rowCount,
+                    content: sheet.content,
+                    analysis: sheetAnalysis
+                  });
+                } else {
+                  analysisResults.push({
+                    sheetName: sheet.sheetName,
+                    rowCount: sheet.rowCount,
+                    content: sheet.content || ''
+                  });
+                }
+              }
+              
+              step.result = {
+                success: true,
+                tool: step.tool,
+                totalSheets: result.totalSheets,
+                sheetsAnalyzed: analysisResults.length,
+                sheetResults: analysisResults,
+                analysis: analysisResults.map(r => `## ${r.sheetName}\n\n${r.analysis || r.content}`).join('\n\n'),
+                content: analysisResults.map(r => `## ${r.sheetName}\n\n${r.analysis || r.content}`).join('\n\n')
+              };
+            } else {
+              // 单个内容（CSV 或其他单 sheet 文件）
+              const mdContent = result.markdown || result.content || result;
+              
+              if (mdContent && typeof mdContent === 'string' && mdContent.trim()) {
+                if (this.debug) {
+                  console.log(`[分析] 检测到 Markdown 工具，正在分析内容...`);
+                }
+                
+                const analysisResult = await this.analyzeMarkdownContent(mdContent, step.description);
+                
+                step.result = {
+                  success: true,
+                  tool: step.tool,
+                  originalContent: mdContent,
+                  analysis: analysisResult,
+                  content: analysisResult
+                };
+              } else {
+                step.result = {
+                  success: true,
+                  tool: step.tool,
+                  content: mdContent
+                };
+              }
+            }
+          } else {
+            step.result = result;
+          }
+          
+          previousResults.set(step.id, step.result);
         } else {
           if (this.debug) {
             console.log(`\n[${this.i18n.t('stepLabel')} ${step.id}] ${step.description}`);
@@ -346,6 +465,24 @@ ${toolsDesc}
   async run(userQuery: string): Promise<any> {
     if (this.mode === 'qa') {
       return await this.ask(userQuery);
+    }
+
+    if (this.mode === 'multi') {
+      if (!this.masterAgent) {
+        this.masterAgent = new MasterAgent({ enableMultiAgent: true, maxParallelWorkers: 5 });
+      }
+
+      const multiResult: TaskResult = await this.masterAgent.run(userQuery);
+
+      const results = multiResult.subTasks.map(s => ({
+        step: s.id,
+        description: s.description,
+        status: s.status,
+        result: s.result
+      }));
+
+      console.log('\n' + this.i18n.t('taskComplete'));
+      return results;
     }
 
     const plan = await this.plan(userQuery);

@@ -10,7 +10,7 @@ A cross-platform AI Agent specialized for the IC verification industry, integrat
 
 - **Cross-platform Support**: Runs on Windows 11 and CentOS 7.9
 - **Built on Node.js v16.20.2 & TypeScript**: Modern development technology (**strictly compatible with Node.js v16.20.2**)
-- **Multi-language Support**: Configurable via `.env` (`AGENT_LANGUAGE=zh` or `en`), with runtime switching (`!zh` / `!eng`)
+- **Multi-language Support**: Defaults to Chinese, switch between Chinese/English at runtime (`!zh` / `!eng`)
 - **CJK Character Alignment**: Accurate visual-width calculation for mixed Chinese/English console output
 - **OpenAI Compatible API**: Supports local and cloud LLMs
 - **Plan-and-Execute Architecture**: Clear workflow with planning before execution
@@ -24,7 +24,12 @@ A cross-platform AI Agent specialized for the IC verification industry, integrat
   - API calls (GET/POST)
   - LLM content analysis
 - **Custom Script Support**: Register and call external scripts like Python
-- **Dual Mode Support**: Switch between Plan-and-Execute and QA modes on the fly
+- **Dual Mode Support**: Switch between Plan-and-Execute, Q&A, and Multi-Agent modes on the fly
+- **Multi-Agent Collaboration Architecture**:
+  - **Master Agent**: Scheduler/Manager with global task state, long-term memory, and decision logic
+  - **Worker Agents**: Stateless, temporary workers for parallel task execution
+  - **Parallel Execution**: Multiple workers execute simultaneously
+  - **Automatic Cleanup**: Workers are destroyed after task completion
 - **Drag-and-Drop File Paths**: Drag files onto the terminal to auto-insert their absolute path (Windows / Linux GUI)
 - **Version Command**: Check current version with `!v`
 - **Hot Reload**: Reload `.env` configuration at runtime with `!reload` — API key, model, temperature, max tokens, and language all take effect immediately without restart
@@ -46,8 +51,6 @@ USER_BASE_URL=https://api.openai.com/v1
 USER_MODEL=gpt-3.5-turbo
 USER_TEMPERATURE=0.3
 USER_MAX_TOKENS=10000
-AGENT_LANGUAGE=zh
-DEBUG=false
 ```
 
 | Variable | Description |
@@ -57,9 +60,8 @@ DEBUG=false
 | `USER_MODEL` | Model name to use |
 | `USER_TEMPERATURE` | Temperature for LLM responses (0-2) |
 | `USER_MAX_TOKENS` | Maximum tokens per LLM response |
-| `AGENT_LANGUAGE` | Startup language: `zh` (Chinese) or `en`/`eng` (English) |
-| `DEBUG` | `true` for verbose output, `false` for clean output |
 
+**Note:** Language (`!zh`/`!eng`) and Debug mode (`!debug`) are controlled via commands at runtime.
 All configurations can be hot-reloaded at runtime via the `!reload` command without restarting the program.
 
 ### 3. Run Project
@@ -85,9 +87,11 @@ npm start
 |---------|-------------|
 | `!help` | Display help information (all commands and built-in tools) |
 | `!exit` | Exit program |
-| `!mode` | Toggle between QA and Plan mode |
+| `!mode` | Toggle between Q&A, Plan, and Multi-Agent modes |
 | `!qa` | Switch to QA mode (direct LLM answers) |
 | `!plan` | Switch to Plan-and-Execute mode |
+| `!multi` | Switch to Multi-Agent mode (parallel execution, default) |
+| `!debug` | Toggle debug mode (developer mode) |
 | `!clear` | Clear conversation memory |
 | `!reset` | Clear memory (alias of `!clear`) |
 | `!history` | View conversation memory records |
@@ -110,7 +114,7 @@ npm start
 
 ### Language Switching
 
-The initial language is determined by `AGENT_LANGUAGE` in `.env`. At runtime:
+Default language is Chinese. At runtime:
 
 | Command | Description |
 |---------|-------------|

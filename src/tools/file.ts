@@ -83,13 +83,22 @@ export class FileReadTool extends BaseTool {
       ];
 
       if (!supportedExts.includes(ext)) {
-        throw new Error(`不支持的文件类型: ${ext}，支持的类型: ${supportedExts.join(', ')}`);
+        return { 
+          success: false, 
+          message: `跳过不支持的文件类型: ${ext}`,
+          skipped: true,
+          unsupported: true
+        };
       }
 
       const content = await fs.readFile(filePath, 'utf-8');
       return { success: true, content };
     } catch (error: any) {
-      throw new Error(`读取文件失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `读取文件失败: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }
@@ -128,11 +137,11 @@ export class FileWriteTool extends BaseTool {
 
 export class ExcelReadTool extends BaseTool {
   name = 'excel_read';
-  description = '读取 Excel 文件内容并转换为 Markdown 表格格式';
+  description = '读取 Excel 文件内容并转换为 Markdown 表格格式，支持读取所有工作表';
   parameters = {
     filePath: { type: 'string', description: 'Excel 文件路径', required: true },
-    sheetName: { type: 'string', description: '工作表名称（可选）', required: false },
-    maxRows: { type: 'number', description: '最大转换行数（可选，默认100）', required: false }
+    sheetName: { type: 'string', description: '工作表名称（可选，不指定则读取所有工作表）', required: false },
+    maxRows: { type: 'number', description: '每个工作表最大转换行数（可选，默认100）', required: false }
   };
 
   async execute(args: Record<string, any>): Promise<any> {
@@ -142,46 +151,73 @@ export class ExcelReadTool extends BaseTool {
       const maxRows = args.maxRows || 100;
 
       const workbook = xlsx.readFile(filePath);
-      const sheet = sheetName || workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheet];
-      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+      const allSheetNames = workbook.SheetNames;
+      const sheetsToRead = sheetName ? [sheetName] : allSheetNames;
 
-      if (data.length === 0) {
-        return { success: true, markdown: '', content: '', rowCount: 0, sheetName: sheet };
+      let fullMd = '';
+      let totalRows = 0;
+      const sheetResults: any[] = [];
+
+      for (const sheet of sheetsToRead) {
+        const worksheet = workbook.Sheets[sheet];
+        if (!worksheet) {
+          continue;
+        }
+        const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+        if (data.length === 0) {
+          sheetResults.push({ sheetName: sheet, rowCount: 0, content: '' });
+          continue;
+        }
+
+        const headers = data[0] || [];
+        const rows = data.slice(1, maxRows + 1);
+
+        let sheetMd = `## ${sheet}\n\n`;
+        sheetMd += '| ' + headers.join(' | ') + ' |\n';
+        sheetMd += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+
+        for (const row of rows) {
+          const cells = headers.map((_, i) => {
+            const cell = row[i];
+            if (cell === undefined || cell === null) return '';
+            return String(cell).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+          });
+          sheetMd += '| ' + cells.join(' | ') + ' |\n';
+        }
+
+        if (data.length > maxRows) {
+          sheetMd += `\n*... 共 ${data.length - 1} 行，显示前 ${maxRows} 行 *\n\n`;
+        } else {
+          sheetMd += '\n';
+        }
+
+        fullMd += sheetMd;
+        totalRows += data.length - 1;
+        sheetResults.push({ sheetName: sheet, rowCount: data.length - 1, content: sheetMd });
       }
 
-      const headers = data[0] || [];
-      const rows = data.slice(1, maxRows + 1);
-
-      let md = `## ${sheet}\n\n`;
-      md += '| ' + headers.join(' | ') + ' |\n';
-      md += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
-
-      for (const row of rows) {
-        const cells = headers.map((_, i) => {
-          const cell = row[i];
-          if (cell === undefined || cell === null) return '';
-          return String(cell).replace(/\|/g, '\\|').replace(/\n/g, ' ');
-        });
-        md += '| ' + cells.join(' | ') + ' |\n';
-      }
-
-      let message = `Excel 文件包含 ${data.length - 1} 行数据`;
-      if (data.length > maxRows) {
-        md += `\n*... 共 ${data.length - 1} 行，显示前 ${maxRows} 行 *`;
-        message += `，已截断显示前 ${maxRows} 行`;
+      let message = `Excel 文件共 ${allSheetNames.length} 个工作表，已读取 ${sheetsToRead.length} 个`;
+      if (totalRows > 0) {
+        message += `，总计 ${totalRows} 行数据`;
       }
 
       return {
         success: true,
-        content: md,
-        markdown: md,
-        rowCount: data.length - 1,
-        sheetName: sheet,
+        content: fullMd,
+        markdown: fullMd,
+        totalRows,
+        totalSheets: allSheetNames.length,
+        sheetsRead: sheetsToRead.length,
+        sheetResults,
         message
       };
     } catch (error: any) {
-      throw new Error(`读取Excel文件失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `跳过Excel文件: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }
@@ -198,7 +234,11 @@ export class DocxReadTool extends BaseTool {
       const filePath = args.filePath;
 
       if (!filePath) {
-        throw new Error('文件路径不能为空');
+        return { 
+          success: false, 
+          message: '跳过: 文件路径不能为空',
+          skipped: true
+        };
       }
 
       const buffer = await fs.readFile(filePath);
@@ -206,7 +246,11 @@ export class DocxReadTool extends BaseTool {
 
       return { success: true, content: result.value };
     } catch (error: any) {
-      throw new Error(`读取Word文档失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `跳过Word文档: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }
@@ -257,7 +301,11 @@ export class CsvReadTool extends BaseTool {
         message
       };
     } catch (error: any) {
-      throw new Error(`读取CSV文件失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `跳过CSV文件: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }

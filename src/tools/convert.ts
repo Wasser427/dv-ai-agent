@@ -55,7 +55,11 @@ export class ExcelToMarkdownTool extends BaseTool {
         sheetName: sheet
       };
     } catch (error: any) {
-      throw new Error(`Excel转Markdown失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `跳过Excel文件: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }
@@ -103,7 +107,11 @@ export class CsvToMarkdownTool extends BaseTool {
         rowCount: lines.length - 1
       };
     } catch (error: any) {
-      throw new Error(`CSV转Markdown失败: ${error.message}`);
+      return { 
+        success: false, 
+        message: `跳过CSV文件: ${error.message}`,
+        skipped: true
+      };
     }
   }
 }

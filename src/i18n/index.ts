@@ -1,6 +1,5 @@
 import zh from './zh';
 import en from './en';
-import { ConfigManager } from '../config';
 
 const translations: Record<string, any> = { zh, en };
 
@@ -9,9 +8,7 @@ export class I18n {
   private currentLang: string;
 
   private constructor() {
-    const config = ConfigManager.getInstance();
-    const raw = (config.get('language') as string).toLowerCase();
-    this.currentLang = (raw === 'en' || raw === 'eng' || raw === 'english') ? 'en' : 'zh';
+    this.currentLang = 'zh';
   }
 
   static getInstance(): I18n {
@@ -41,10 +38,7 @@ export class I18n {
   }
 
   reload(): void {
-    const config = ConfigManager.getInstance();
-    const raw = (config.get('language') as string).toLowerCase();
-    const lang = (raw === 'en' || raw === 'eng' || raw === 'english') ? 'en' : 'zh';
-    this.currentLang = translations[lang] ? lang : 'zh';
+    this.currentLang = 'zh';
   }
 
   getCurrentLang(): string {
