@@ -9,6 +9,7 @@ export default {
   resultTitle: 'Execution Result',
 
   banner: 'DV AI Agent - IC Verification Assistant',
+  copyrightNotice: '      For personal study and research only',
   goodbye: 'Thank you for using DV AI Agent, goodbye!',
   modeBannerPlan: 'Current mode: Plan-and-Execute (Complex tasks: file reading/analysis)',
   modeBannerQA: 'Current mode: Q&A Mode (Simple questions)',

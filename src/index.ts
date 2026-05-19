@@ -57,6 +57,7 @@ function printStartupBanner(): void {
   const pad = Math.floor((SEP.length - title.length) / 2);
   console.log(' '.repeat(Math.max(0, pad)) + title);
   console.log('     https://github.com/Wasser427/dv-ai-agent    ');
+  console.log(i18n.t('copyrightNotice'));
   console.log(SEP);
 }
 
@@ -174,16 +175,16 @@ async function handleCommand(input: string): Promise<boolean> {
 
   if (trimmed === '!eng') {
     i18n.setLanguage('en');
-    printStartupBanner();
     console.log(`\n${i18n.t('languageSwitched')} ${i18n.t('langName')}\n`);
+    printStartupBanner();
     printStartupInfo();
     return true;
   }
 
   if (trimmed === '!zh') {
     i18n.setLanguage('zh');
-    printStartupBanner();
     console.log(`\n${i18n.t('languageSwitched')} ${i18n.t('langName')}\n`);
+    printStartupBanner();
     printStartupInfo();
     return true;
   }

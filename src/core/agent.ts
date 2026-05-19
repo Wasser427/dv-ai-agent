@@ -26,7 +26,7 @@ export class DVAgent {
   private i18n: I18n;
   private memory: Memory;
   private debug: boolean;
-  private mode: AgentMode = 'multi';
+  private mode: AgentMode = 'plan';  // 默认单agent模式
   private masterAgent: MasterAgent | null = null;
 
   constructor() {

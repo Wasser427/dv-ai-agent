@@ -9,6 +9,7 @@ export default {
   resultTitle: '执行结果',
 
   banner: 'DV AI Agent - IC 验证助手',
+  copyrightNotice: '       仅供个人学习研究使用',
   goodbye: '感谢使用 DV AI Agent，再见！',
   modeBannerPlan: '当前模式: Plan-and-Execute (复杂任务: 读取文件/分析等)',
   modeBannerQA: '当前模式: 问答模式 (简单问答)',

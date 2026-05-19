@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%20CentOS%207.9-blue?style=for-the-badge)
 ![Language](https://img.shields.io/badge/Language-TypeScript-blue?logo=typescript&style=for-the-badge)
 
-A cross-platform AI Agent specialized for the IC verification industry, integrating common tools and supporting custom scripts.
+A platform AI Agent specialized for the IC design and verification industry, integrating common tools and supporting custom scripts.
 
 ## Features
 
@@ -30,6 +30,10 @@ A cross-platform AI Agent specialized for the IC verification industry, integrat
   - **Worker Agents**: Stateless, temporary workers for parallel task execution
   - **Parallel Execution**: Multiple workers execute simultaneously
   - **Automatic Cleanup**: Workers are destroyed after task completion
+- **Markdown Auto-Analysis**: Automatically analyzes content from xxx_to_md tools using LLM
+- **Multi-Sheet Excel Support**: Reads all sheets from Excel files and analyzes each individually
+- **Graceful Error Handling**: Skips unsupported file types instead of crashing
+- **Status Command**: Check current mode and debug status with `!status`
 - **Drag-and-Drop File Paths**: Drag files onto the terminal to auto-insert their absolute path (Windows / Linux GUI)
 - **Version Command**: Check current version with `!v`
 - **Hot Reload**: Reload `.env` configuration at runtime with `!reload` — API key, model, temperature, max tokens, and language all take effect immediately without restart
@@ -90,8 +94,9 @@ npm start
 | `!mode` | Toggle between Q&A, Plan, and Multi-Agent modes |
 | `!qa` | Switch to QA mode (direct LLM answers) |
 | `!plan` | Switch to Plan-and-Execute mode |
-| `!multi` | Switch to Multi-Agent mode (parallel execution, default) |
+| `!multi` | Switch to Multi-Agent mode (parallel execution) |
 | `!debug` | Toggle debug mode (developer mode) |
+| `!status` | Show current mode and debug status |
 | `!clear` | Clear conversation memory |
 | `!reset` | Clear memory (alias of `!clear`) |
 | `!history` | View conversation memory records |
@@ -107,8 +112,9 @@ npm start
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| Plan-and-Execute | Plan execution steps via LLM, then execute sequentially | Complex tasks: file analysis, multi-step workflows |
+| Plan-and-Execute | Plan execution steps via LLM, then execute sequentially (**default mode**) | Complex tasks: file analysis, multi-step workflows |
 | QA Mode | Direct LLM response without planning | Simple questions: general knowledge, quick queries |
+| Multi-Agent | Parallel execution with multiple worker agents | Complex parallel workflows |
 
 **Both modes share conversation memory**, ensuring seamless context across mode switches.
 
